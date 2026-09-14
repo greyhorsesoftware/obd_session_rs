@@ -1,0 +1,38 @@
+name: Cleanup artifacts
+
+on:
+  schedule:
+    # Sundays at 03:00 UTC.
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+jobs:
+  delete-stale-artifacts:
+    name: Delete all but the latest artifact per name
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Delete stale artifacts via the Actions API
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Keep the NEWEST artifact per name; delete everything older.
+          ids=$(gh api --paginate "/repos/${REPO}/actions/artifacts" \
+              --jq '.artifacts[] | {id, name, created_at}' \
+            | jq -s 'group_by(.name)
+                     | map(sort_by(.created_at) | .[:-1] | .[].id)
+                     | flatten | .[]')
+          if [ -z "${ids}" ]; then
+            echo "Nothing to delete — every artifact name only has its latest."
+            exit 0
+          fi
+          count=0
+          for id in ${ids}; do
+            echo "Deleting artifact ${id}"
+            gh api --method DELETE "/repos/${REPO}/actions/artifacts/${id}"
+            count=$((count + 1))
+          done
+          echo "Deleted ${count} artifact(s); latest of each name kept."

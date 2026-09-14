@@ -1,0 +1,123 @@
+# mock: mustang50
+# init_ok: true
+--- identify (ordered) ---
+ATE0
+ATH1
+STPPMC
+STBC 1
+0100
+0902
+0101
+0100
+0120
+0140
+0160
+0180
+01A0
+01C0
+0600
+0620
+0640
+0660
+0900
+ATSH7E0
+090A
+0904
+ATSH7E1
+090A
+ATSH7E2
+090A
+ATSH7E3
+090A
+ATSH7E4
+090A
+ATSH7E5
+090A
+ATSH7E6
+090A
+ATSH7E7
+090A
+ATSH7DF
+010C0D
+--- poll (sorted) ---
+0101
+0103
+0104
+0105
+0106
+0107
+AT
+--- vehicle_info ---
+{
+  "vin": "1ZVSYNTH0CMSTNG50",
+  "wmi": "1ZV",
+  "manufacturer": "Ford (AutoAlliance International)",
+  "engine_type": "Gasoline",
+  "ecus": [
+    {
+      "controller_id": "7E0",
+      "name": "PCM-PowertrainCtrl",
+      "calibration_ids": [
+        "MOCKCAL0000"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    }
+  ],
+  "supported_pids": [
+    "0101",
+    "0103",
+    "0104",
+    "0105",
+    "0106",
+    "0107",
+    "0108",
+    "0109",
+    "010C",
+    "010D",
+    "010E",
+    "010F",
+    "0110",
+    "0111",
+    "0113",
+    "011C",
+    "011F",
+    "0120",
+    "0121",
+    "012E",
+    "012F",
+    "0130",
+    "0131",
+    "0133",
+    "0134",
+    "0138",
+    "013C",
+    "013D",
+    "0140",
+    "0141",
+    "0142",
+    "0143",
+    "0144",
+    "0145",
+    "0146",
+    "0147",
+    "0149",
+    "014A",
+    "014C",
+    "0621",
+    "0622",
+    "0635",
+    "0636",
+    "063A",
+    "063B",
+    "063D",
+    "0640"
+  ],
+  "protocol": "ISO 15765-4 CAN 11-bit (500k)",
+  "year_char": "C",
+  "pcm_strategy": null,
+  "module_census": [],
+  "strategy_probed": null
+}

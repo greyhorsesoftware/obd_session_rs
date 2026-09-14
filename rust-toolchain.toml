@@ -1,0 +1,23 @@
+# Pinned so CI artifacts stay link-compatible with obd_equation_rs: the RevOBD
+# app links BOTH staticlibs into one binary, and each embeds its toolchain's
+# libstd. Same toolchain → identical std objects → the linker resolves std once.
+# Mismatched toolchains → two std copies get pulled → duplicate symbol
+# `_rust_eh_personality` at link (CI 2026-08-21). Keep this file IDENTICAL in
+# obd_session_rs and obd_equation_rs, bump both together, and rebuild both
+# repos' artifacts after a bump.
+#
+# `targets` must list every cross-target the CI matrix builds — the pinned
+# toolchain is auto-installed WITHOUT them otherwise (the workflows'
+# dtolnay/rust-toolchain step only adds targets to ITS stable install, which
+# this file overrides): E0463 "can't find crate for `std`" on aarch64-apple-ios.
+[toolchain]
+channel = "1.91.1"
+# rustfmt rides with the pinned toolchain (CI gates `cargo fmt --check`; the
+# workflow's `stable` install is overridden by this file, so it must be here).
+components = ["rustfmt"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-apple-ios",
+    "aarch64-apple-ios-sim",
+    "x86_64-pc-windows-msvc",
+]

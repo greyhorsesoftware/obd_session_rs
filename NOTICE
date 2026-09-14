@@ -1,0 +1,12 @@
+obd_session_rs — Copyright (c) 2025-2026 Grey Horse Software.
+Licensed under MIT OR Apache-2.0, at your option (see LICENSE-MIT and LICENSE-APACHE).
+
+The DVI link handler (src/link/dvi/) implements the OBDX Pro binary protocol
+as described in the vendor's published documentation. OBDX and OBDX Pro,
+OBDLink and STN, ELM327, Dragy and Vgate are trademarks of their respective
+owners; the names appear here only to identify supported hardware.
+
+The fixtures under mock_data/ are adapter transcripts captured from real
+vehicles. Every VIN and calibration id in them has been replaced with a
+synthetic value (tools/synthesize_fixtures.py); no fixture identifies a
+specific vehicle.

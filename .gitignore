@@ -1,0 +1,110 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# Local cargo overrides (e.g. default target triple for dev machines).
+# Must not be committed: forcing a target here breaks CI runners that
+# don't have that triple installed.
+.cargo/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# Temporary files
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+
+# Test coverage
+*.profraw
+
+# Rust documentation
+target/doc/
+
+# Rust fmt and clippy cache
+target/.rustc_info.json
+
+# Build artifacts for different targets
+target/aarch64-apple-ios/
+target/x86_64-apple-ios/
+target/aarch64-apple-darwin/
+target/x86_64-apple-darwin/
+target/universal/
+
+# Xcode artifacts (for iOS/macOS builds)
+*.xcworkspace/
+*.xcodeproj/
+*.pbxproj
+*.xcscheme
+
+# Swift Package Manager
+.build/
+Packages/
+Package.resolved
+
+# Android artifacts (if needed)
+.gradle/
+local.properties
+
+# Node.js (if using any JS tooling)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage reports
+coverage/
+*.lcov
+
+# Test artifacts
+test_mock_data.rs
+
+# Documentation builds
+book/
+
+# Benchmark artifacts
+criterion/
+
+# Flamegraph artifacts
+flamegraph.svg
+
+# Debug symbols
+*.dSYM/
+
+# Rust analyzer
+rust-project.json
+
+# Cargo registry cache (optional - uncomment if you want to ignore)
+# ~/.cargo/registry/
+# ~/.cargo/git/
+
+# Python tooling
+__pycache__/

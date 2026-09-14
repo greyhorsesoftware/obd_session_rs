@@ -1,0 +1,40 @@
+[package]
+name = "obd_session_rs"
+version = "1.2.0"
+edition = "2021"
+description = "OBD-II session engine: ELM327/STN/OBDX link handlers, 11- and 29-bit CAN identify, tiered PID polling, BLE/Classic/WiFi/USB transports, C FFI"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/greyhorsesoftware/obd_session_rs"
+readme = "README.md"
+authors = ["Grey Horse Software <info@greyhorsesoftware.com>"]
+homepage = "https://greyhorsesoftware.com"
+keywords = ["obd", "obd-ii", "automotive", "elm327", "bluetooth"]
+categories = ["hardware-support", "api-bindings"]
+
+[lib]
+crate-type = ["staticlib", "rlib"]
+
+[features]
+default = []
+# RS7: compiles the mock-platform FFI trio (obd_create_session /
+# obd_get_api_handle / obd_destroy_session) used only by tests/ffi_test.rs.
+# The app-linked library builds WITHOUT this — the exports never ship.
+ffi-test = []
+ble = ["btleplug", "tokio", "futures"]
+bluetooth-classic = []
+full-bluetooth = ["ble", "bluetooth-classic"]
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+
+# BLE transport (optional, behind "ble" feature)
+btleplug = { version = "0.11", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "time", "sync"], optional = true }
+futures = { version = "0.3", optional = true }
+libc = "0.2"
+
+[dev-dependencies]
+# For testing
+tempfile = "3.0"

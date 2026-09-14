@@ -1,0 +1,107 @@
+# mock: default
+# init_ok: true
+--- identify (ordered) ---
+ATE0
+ATH1
+STPPMC
+STBC 1
+0100
+0902
+0101
+0100
+0120
+0140
+0160
+0180
+01A0
+01C0
+0600
+0620
+0640
+0660
+0900
+ATSH7E0
+090A
+0904
+ATSH7E1
+090A
+ATSH7E2
+090A
+ATSH7E3
+090A
+ATSH7E4
+090A
+ATSH7E5
+090A
+ATSH7E6
+090A
+ATSH7E7
+090A
+ATSH7DF
+010C0D
+--- poll (sorted) ---
+0101
+0103
+0104
+0105
+0106
+0107
+AT
+--- vehicle_info ---
+{
+  "vin": "1G1SYNTH0RDEFAULT",
+  "wmi": "1G1",
+  "manufacturer": "Chevrolet USA",
+  "engine_type": "Gasoline",
+  "ecus": [
+    {
+      "controller_id": "7E0",
+      "name": "ECU1-EngineControl",
+      "calibration_ids": [
+        "MOCKCAL00000"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    }
+  ],
+  "supported_pids": [
+    "0101",
+    "0103",
+    "0104",
+    "0105",
+    "0106",
+    "0107",
+    "010C",
+    "010D",
+    "010F",
+    "0110",
+    "0113",
+    "0114",
+    "011C",
+    "011F",
+    "0120",
+    "0121",
+    "012F",
+    "0133",
+    "0140",
+    "0142",
+    "0146",
+    "0621",
+    "0622",
+    "0631",
+    "0635",
+    "0636",
+    "0639",
+    "063A",
+    "063C",
+    "063D",
+    "0640"
+  ],
+  "protocol": "ISO 15765-4 CAN 11-bit (500k)",
+  "year_char": "R",
+  "pcm_strategy": null,
+  "module_census": [],
+  "strategy_probed": null
+}

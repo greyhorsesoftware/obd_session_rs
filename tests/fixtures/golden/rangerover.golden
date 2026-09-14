@@ -1,0 +1,178 @@
+# mock: rangerover
+# init_ok: true
+--- identify (ordered) ---
+ATE0
+ATH1
+STPPMC
+STBC 1
+0100
+0902
+0101
+0100
+0120
+0140
+0160
+0180
+01A0
+01C0
+0600
+0620
+0640
+0660
+0900
+ATSH7E0
+090A
+0904
+ATSH7E1
+090A
+0904
+ATSH7E2
+090A
+ATSH7E3
+090A
+ATSH7E4
+090A
+ATSH7E5
+090A
+ATSH7E6
+090A
+0904
+ATSH7E7
+090A
+ATSH7DF
+010C0D
+--- poll (sorted) ---
+0101
+0104
+0105
+010B
+010C
+010D
+AT
+--- vehicle_info ---
+{
+  "vin": "SALSYNTH0JRNGRVR1",
+  "wmi": "SAL",
+  "manufacturer": "Land Rover",
+  "engine_type": "Diesel",
+  "ecus": [
+    {
+      "controller_id": "7E0",
+      "name": "ECM-EngineControl",
+      "calibration_ids": [
+        "MOCKCAL000000000MOCKCAL010000000MOCKCAL010000000MOCKCAL030000000MOCKCAL040000000"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    },
+    {
+      "controller_id": "7E1",
+      "name": "TCM-TransmisCtrl",
+      "calibration_ids": [
+        "MOCKCAL1000000"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    },
+    {
+      "controller_id": "7E6",
+      "name": "BSCM-BrakeSystem",
+      "calibration_ids": [
+        "MOCKCAL2000000MOCKCAL21000000"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    }
+  ],
+  "supported_pids": [
+    "0101",
+    "0104",
+    "0105",
+    "010B",
+    "010C",
+    "010D",
+    "010F",
+    "0111",
+    "0113",
+    "011C",
+    "011F",
+    "0120",
+    "0121",
+    "0121",
+    "0121",
+    "0123",
+    "012F",
+    "0130",
+    "0130",
+    "0130",
+    "0131",
+    "0131",
+    "0131",
+    "0133",
+    "0133",
+    "0133",
+    "0134",
+    "0140",
+    "0140",
+    "0140",
+    "0141",
+    "0141",
+    "0142",
+    "0142",
+    "0142",
+    "0143",
+    "0146",
+    "0146",
+    "0146",
+    "0149",
+    "0149",
+    "014A",
+    "014D",
+    "0151",
+    "015A",
+    "015A",
+    "015C",
+    "015D",
+    "015E",
+    "0160",
+    "0161",
+    "0162",
+    "0163",
+    "0165",
+    "0166",
+    "0167",
+    "0169",
+    "016B",
+    "016C",
+    "016D",
+    "0170",
+    "0171",
+    "0177",
+    "0178",
+    "017A",
+    "017F",
+    "0180",
+    "0181",
+    "0183",
+    "0185",
+    "0188",
+    "018B",
+    "018F",
+    "0192",
+    "0621",
+    "0631",
+    "0632",
+    "0640"
+  ],
+  "protocol": "ISO 15765-4 CAN 11-bit (500k)",
+  "year_char": "J",
+  "pcm_strategy": null,
+  "module_census": [],
+  "strategy_probed": null
+}

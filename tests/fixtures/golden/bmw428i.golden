@@ -1,0 +1,156 @@
+# mock: bmw428i
+# init_ok: true
+--- identify (ordered) ---
+ATE0
+ATH1
+STPPMC
+STBC 1
+0100
+0902
+0101
+0100
+0120
+0140
+0160
+0180
+01A0
+01C0
+0600
+0620
+0640
+0660
+0900
+ATSH7E0
+090A
+0904
+ATSH7E1
+090A
+0904
+ATSH7E2
+090A
+ATSH7E3
+090A
+ATSH7E4
+090A
+ATSH7E5
+090A
+ATSH7E6
+090A
+ATSH7E7
+090A
+ATSH7DF
+010C0D
+--- poll (sorted) ---
+0101
+0103
+0104
+0105
+AT
+--- vehicle_info ---
+{
+  "vin": "WBASYNTH0GBMW428S",
+  "wmi": "WBA",
+  "manufacturer": "BMW",
+  "engine_type": "Gasoline",
+  "ecus": [
+    {
+      "controller_id": "7E0",
+      "name": "ECM-EngineControl",
+      "calibration_ids": [
+        "MOCKCAL0"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    },
+    {
+      "controller_id": "7E1",
+      "name": "TCM-TransmisCtrl",
+      "calibration_ids": [
+        "MOCKCAL1"
+      ],
+      "hardware": null,
+      "strategy": null,
+      "serial": null,
+      "module_vin": null
+    }
+  ],
+  "supported_pids": [
+    "0101",
+    "0101",
+    "0103",
+    "0104",
+    "0104",
+    "0105",
+    "0105",
+    "0106",
+    "0107",
+    "010B",
+    "010C",
+    "010C",
+    "010D",
+    "010D",
+    "010E",
+    "010F",
+    "0110",
+    "0111",
+    "0111",
+    "0113",
+    "0115",
+    "011C",
+    "011C",
+    "011F",
+    "0120",
+    "0120",
+    "0121",
+    "0121",
+    "0123",
+    "012E",
+    "012F",
+    "0130",
+    "0130",
+    "0131",
+    "0131",
+    "0133",
+    "0134",
+    "013C",
+    "0140",
+    "0140",
+    "0141",
+    "0142",
+    "0142",
+    "0143",
+    "0144",
+    "0145",
+    "0146",
+    "0147",
+    "0149",
+    "014A",
+    "014C",
+    "0151",
+    "0156",
+    "015C",
+    "0601",
+    "0602",
+    "0620",
+    "0621",
+    "0635",
+    "063C",
+    "063D",
+    "0640",
+    "0902",
+    "0904",
+    "0904",
+    "0906",
+    "0906",
+    "0908",
+    "090A",
+    "090A"
+  ],
+  "protocol": "ISO 15765-4 CAN 11-bit (500k)",
+  "year_char": "G",
+  "pcm_strategy": null,
+  "module_census": [],
+  "strategy_probed": null
+}
