@@ -80,7 +80,9 @@ const PROFILES: &[SerialProfile] = &[
 
 /// Picker-worthy: advertises a known serial service, or is named like an OBD adapter.
 fn is_obd_candidate(name: &str, advertised: &[Uuid]) -> bool {
-    advertised.iter().any(|u| PROFILES.iter().any(|p| p.service == *u))
+    advertised
+        .iter()
+        .any(|u| PROFILES.iter().any(|p| p.service == *u))
         || name.to_lowercase().contains("obd")
 }
 
@@ -95,7 +97,11 @@ fn pick_chars<'a>(
             chars
                 .clone()
                 .into_iter()
-                .find(|ch| ch.service_uuid == p.service && ch.uuid == uuid && ch.properties.intersects(need))
+                .find(|ch| {
+                    ch.service_uuid == p.service
+                        && ch.uuid == uuid
+                        && ch.properties.intersects(need)
+                })
                 .cloned()
         };
         if let (Some(tx), Some(rx)) = (find(p.tx, writable), find(p.rx, notifying)) {
@@ -275,20 +281,26 @@ impl BleTransport {
             // link comes up (see ble_agent). Non-fatal — adapters with open
             // characteristics never pair at all.
             #[cfg(target_os = "linux")]
-            let _agent = match super::ble_agent::PairingAgent::register(&format!("/org/bluez/{want}")) {
-                Ok(a) => Some(a),
-                Err(e) => {
-                    eprintln!("[BLE] pairing agent unavailable: {e}");
-                    None
-                }
-            };
+            let _agent =
+                match super::ble_agent::PairingAgent::register(&format!("/org/bluez/{want}")) {
+                    Ok(a) => Some(a),
+                    Err(e) => {
+                        eprintln!("[BLE] pairing agent unavailable: {e}");
+                        None
+                    }
+                };
 
             stage("connect", CONNECT_TIMEOUT, peripheral.connect()).await?;
             let link = async {
                 stage("discover", DISCOVER_TIMEOUT, peripheral.discover_services()).await?;
                 let chars = peripheral.characteristics();
                 let (tx_char, rx_char) = pick_chars(&chars)?;
-                stage("subscribe", SUBSCRIBE_TIMEOUT, peripheral.subscribe(&rx_char)).await?;
+                stage(
+                    "subscribe",
+                    SUBSCRIBE_TIMEOUT,
+                    peripheral.subscribe(&rx_char),
+                )
+                .await?;
                 Ok::<_, String>(tx_char)
             }
             .await;
@@ -301,7 +313,10 @@ impl BleTransport {
                     return Err(e);
                 }
             };
-            let write_type = if tx_char.properties.contains(CharPropFlags::WRITE_WITHOUT_RESPONSE) {
+            let write_type = if tx_char
+                .properties
+                .contains(CharPropFlags::WRITE_WITHOUT_RESPONSE)
+            {
                 WriteType::WithoutResponse
             } else {
                 WriteType::WithResponse
@@ -363,14 +378,22 @@ mod tests {
     use std::collections::BTreeSet;
 
     fn ch(service: Uuid, uuid: Uuid, properties: CharPropFlags) -> Characteristic {
-        Characteristic { uuid, service_uuid: service, properties, descriptors: BTreeSet::new() }
+        Characteristic {
+            uuid,
+            service_uuid: service,
+            properties,
+            descriptors: BTreeSet::new(),
+        }
     }
 
     const SUOTA: Uuid = short(0xfef5);
 
     #[test]
     fn short_uuid_sits_on_the_bluetooth_base() {
-        assert_eq!(short(0xfff1).to_string(), "0000fff1-0000-1000-8000-00805f9b34fb");
+        assert_eq!(
+            short(0xfff1).to_string(),
+            "0000fff1-0000-1000-8000-00805f9b34fb"
+        );
     }
 
     /// The OBDLink CX table as read off hardware: a notify characteristic in
@@ -378,10 +401,22 @@ mod tests {
     #[test]
     fn cx_layout_picks_fff2_and_fff1() {
         let chars = vec![
-            ch(SUOTA, Uuid::from_u128(0x5f78df94_798c_46f5_990a_b3eb6a065c88), CharPropFlags::READ | CharPropFlags::NOTIFY),
-            ch(SUOTA, Uuid::from_u128(0x457871e8_d516_4ca1_9116_57d0b17b9cb2), CharPropFlags::WRITE | CharPropFlags::WRITE_WITHOUT_RESPONSE),
+            ch(
+                SUOTA,
+                Uuid::from_u128(0x5f78df94_798c_46f5_990a_b3eb6a065c88),
+                CharPropFlags::READ | CharPropFlags::NOTIFY,
+            ),
+            ch(
+                SUOTA,
+                Uuid::from_u128(0x457871e8_d516_4ca1_9116_57d0b17b9cb2),
+                CharPropFlags::WRITE | CharPropFlags::WRITE_WITHOUT_RESPONSE,
+            ),
             ch(short(0xfff0), short(0xfff1), CharPropFlags::NOTIFY),
-            ch(short(0xfff0), short(0xfff2), CharPropFlags::WRITE | CharPropFlags::WRITE_WITHOUT_RESPONSE),
+            ch(
+                short(0xfff0),
+                short(0xfff2),
+                CharPropFlags::WRITE | CharPropFlags::WRITE_WITHOUT_RESPONSE,
+            ),
         ];
         let (tx, rx) = pick_chars(&chars).unwrap();
         assert_eq!(tx.uuid, short(0xfff2));
@@ -391,7 +426,11 @@ mod tests {
     #[test]
     fn single_characteristic_profile_resolves_tx_and_rx_to_it() {
         let p = &PROFILES[1];
-        let chars = vec![ch(p.service, p.tx, CharPropFlags::WRITE | CharPropFlags::NOTIFY)];
+        let chars = vec![ch(
+            p.service,
+            p.tx,
+            CharPropFlags::WRITE | CharPropFlags::NOTIFY,
+        )];
         let (tx, rx) = pick_chars(&chars).unwrap();
         assert_eq!(tx.uuid, rx.uuid);
     }
@@ -424,20 +463,32 @@ mod tests {
 
     #[test]
     fn stage_names_timeouts_and_failures() {
-        let rt = tokio::runtime::Builder::new_current_thread().enable_time().build().unwrap();
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .unwrap();
         rt.block_on(async {
             let never = std::future::pending::<Result<(), String>>();
             assert_eq!(
-                stage("subscribe", Duration::from_millis(20), never).await.unwrap_err(),
+                stage("subscribe", Duration::from_millis(20), never)
+                    .await
+                    .unwrap_err(),
                 "ble_subscribe_timeout"
             );
             let failed = async { Err::<(), _>("boom") };
             assert_eq!(
-                stage("connect", Duration::from_secs(1), failed).await.unwrap_err(),
+                stage("connect", Duration::from_secs(1), failed)
+                    .await
+                    .unwrap_err(),
                 "ble_connect_failed: boom"
             );
             let fine = async { Ok::<_, String>(7) };
-            assert_eq!(stage("discover", Duration::from_secs(1), fine).await.unwrap(), 7);
+            assert_eq!(
+                stage("discover", Duration::from_secs(1), fine)
+                    .await
+                    .unwrap(),
+                7
+            );
         });
     }
 }

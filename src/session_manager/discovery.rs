@@ -196,12 +196,21 @@ mod tests {
             ..DiscoveryCfg::default()
         };
         // Quick round: idle out to the interval.
-        assert_eq!(round_pause(Duration::from_millis(500), &cfg), Duration::from_millis(2500));
+        assert_eq!(
+            round_pause(Duration::from_millis(500), &cfg),
+            Duration::from_millis(2500)
+        );
         // Round nearly filled the interval: the floor wins.
-        assert_eq!(round_pause(Duration::from_millis(2600), &cfg), Duration::from_secs(1));
+        assert_eq!(
+            round_pause(Duration::from_millis(2600), &cfg),
+            Duration::from_secs(1)
+        );
         // Round overran (BLE window + classic inquiry): still a real gap,
         // never back-to-back scanning.
-        assert_eq!(round_pause(Duration::from_secs(11), &cfg), Duration::from_secs(1));
+        assert_eq!(
+            round_pause(Duration::from_secs(11), &cfg),
+            Duration::from_secs(1)
+        );
     }
 
     // ── prune policy (pure) ──

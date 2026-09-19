@@ -71,7 +71,10 @@ impl PairingAgent {
             .spawn(move || serve(allowed, stop_t, tx))
             .map_err(|e| format!("agent thread: {e}"))?;
         match rx.recv_timeout(Duration::from_secs(5)) {
-            Ok(Ok(())) => Ok(Self { stop, thread: Some(thread) }),
+            Ok(Ok(())) => Ok(Self {
+                stop,
+                thread: Some(thread),
+            }),
             Ok(Err(e)) => Err(e),
             Err(_) => {
                 stop.store(true, Ordering::SeqCst);
@@ -90,7 +93,11 @@ impl Drop for PairingAgent {
     }
 }
 
-fn serve(allowed: String, stop: Arc<AtomicBool>, ready: std::sync::mpsc::Sender<Result<(), String>>) {
+fn serve(
+    allowed: String,
+    stop: Arc<AtomicBool>,
+    ready: std::sync::mpsc::Sender<Result<(), String>>,
+) {
     let conn = match Connection::new_system() {
         Ok(c) => c,
         Err(e) => {
@@ -129,9 +136,17 @@ fn serve(allowed: String, stop: Arc<AtomicBool>, ready: std::sync::mpsc::Sender<
     let manager = conn.with_proxy("org.bluez", "/org/bluez", Duration::from_secs(5));
     let path = Path::from(AGENT_PATH);
     let registered: Result<(), dbus::Error> = manager
-        .method_call("org.bluez.AgentManager1", "RegisterAgent", (path.clone(), CAPABILITY))
+        .method_call(
+            "org.bluez.AgentManager1",
+            "RegisterAgent",
+            (path.clone(), CAPABILITY),
+        )
         .and_then(|()| {
-            manager.method_call("org.bluez.AgentManager1", "RequestDefaultAgent", (path.clone(),))
+            manager.method_call(
+                "org.bluez.AgentManager1",
+                "RequestDefaultAgent",
+                (path.clone(),),
+            )
         });
     if let Err(e) = registered {
         let _ = ready.send(Err(format!("register agent: {e}")));
@@ -154,8 +169,14 @@ mod tests {
 
     #[test]
     fn approves_only_the_selected_device() {
-        assert_eq!(verdict("RequestAuthorization", Some(CX), CX), Verdict::Accept);
-        assert_eq!(verdict("RequestConfirmation", Some(CX), CX), Verdict::Accept);
+        assert_eq!(
+            verdict("RequestAuthorization", Some(CX), CX),
+            Verdict::Accept
+        );
+        assert_eq!(
+            verdict("RequestConfirmation", Some(CX), CX),
+            Verdict::Accept
+        );
         assert_eq!(
             verdict("RequestAuthorization", Some("/org/bluez/hci0/dev_AA"), CX),
             Verdict::Reject

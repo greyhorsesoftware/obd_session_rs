@@ -817,7 +817,13 @@ impl OBDPlatformInterface for ExternalPlatform {
             // like the host route does: a transport open can block for tens
             // of seconds (BLE connect + pairing), and the caller's bounded
             // wait and cancel checks only work once this has returned.
-            let Some(me) = self.self_weak.lock().unwrap().as_ref().and_then(|w| w.upgrade()) else {
+            let Some(me) = self
+                .self_weak
+                .lock()
+                .unwrap()
+                .as_ref()
+                .and_then(|w| w.upgrade())
+            else {
                 callback(ConnectResult::Failed {
                     reason: "platform has no self handle (attach_self not called)".to_string(),
                 });
@@ -845,7 +851,9 @@ impl OBDPlatformInterface for ExternalPlatform {
                 });
             if let Err(e) = spawned {
                 if let Some(callback) = slot.lock().unwrap().take() {
-                    callback(ConnectResult::Failed { reason: format!("connect thread: {e}") });
+                    callback(ConnectResult::Failed {
+                        reason: format!("connect thread: {e}"),
+                    });
                 }
             }
             return;
@@ -874,7 +882,8 @@ impl OBDPlatformInterface for ExternalPlatform {
         // echo can reach the attempt that comes next.
         let rust = {
             let mut writer = self.writer.lock().unwrap();
-            self.connect_epoch.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.connect_epoch
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             std::mem::replace(&mut *writer, Writer::Host)
         };
         if let Writer::Rust(t) = rust {
@@ -888,7 +897,8 @@ impl OBDPlatformInterface for ExternalPlatform {
         // LH5: a Rust transport closes here; the host path asks Swift.
         let rust = {
             let mut writer = self.writer.lock().unwrap();
-            self.connect_epoch.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.connect_epoch
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
             std::mem::replace(&mut *writer, Writer::Host)
         };
         if let Writer::Rust(t) = rust {
@@ -1347,7 +1357,10 @@ mod tests {
         std::thread::sleep(Duration::from_millis(150)); // let the drop echo run
         assert!(!platform.is_connected());
         assert!(
-            !statuses.lock().unwrap().contains(&ConnectionStatus::Disconnected),
+            !statuses
+                .lock()
+                .unwrap()
+                .contains(&ConnectionStatus::Disconnected),
             "abandon is silent: {:?}",
             statuses.lock().unwrap()
         );
@@ -1359,7 +1372,9 @@ mod tests {
     fn late_connect_under_a_stale_epoch_is_dropped() {
         let (port, hangup) = hangup_probe();
         let (platform, _ctx) = create_mock_external_platform();
-        let stale = platform.connect_epoch.load(std::sync::atomic::Ordering::SeqCst);
+        let stale = platform
+            .connect_epoch
+            .load(std::sync::atomic::Ordering::SeqCst);
         platform.abandon_pending_connect();
         let err = platform
             .connect_rust(&format!("wifi:127.0.0.1:{port}"), stale)
