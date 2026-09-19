@@ -37,6 +37,8 @@ impl ConnectionMsg {
     pub const REASON_NO_CONNECTORS: &'static str = "no_connectors";
     pub const REASON_ADAPTER_INIT_TIMEOUT: &'static str = "adapter_init_timeout";
     pub const REASON_BT_CONNECT_FAILED: &'static str = "bt_connect_failed";
+    /// The platform never reported a connect result inside the session's deadline.
+    pub const REASON_CONNECT_TIMEOUT: &'static str = "connect_timeout";
     pub const REASON_RECONNECT_FAILED: &'static str = "reconnect_failed";
     pub const REASON_UNSUPPORTED_PROTOCOL: &'static str = "unsupported_protocol";
     /// Bus wasn't answering — no VIN / UNABLE TO CONNECT / no supported PIDs

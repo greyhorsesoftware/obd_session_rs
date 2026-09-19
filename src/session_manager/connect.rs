@@ -398,17 +398,26 @@ impl SessionAPIHandle {
                 }
             }
             if !self.is_connect_current(generation) {
+                platform.abandon_pending_connect();
                 return; // cancelled while the transport was connecting
             }
             if std::time::Instant::now() > deadline {
-                // Old behavior parity: a connect result that never arrives
-                // produced no status. Log it and hand the worker back.
+                // A result that never arrives is a FAILED attempt: say so and
+                // close whatever the platform may still bring up late —
+                // silence left the UI on "Connecting…" forever.
                 let logger = self.shared_state.lock().unwrap().logger.clone();
                 log_cb!(logger, "connect_result_timeout", &connector.id);
+                self.send_status(
+                    ConnectionMsg::CONNECTION_FAILED,
+                    Some(ConnectionMsg::REASON_CONNECT_TIMEOUT),
+                    None,
+                );
+                self.teardown_failed_attempt();
                 return;
             }
         };
         if !self.is_connect_current(generation) {
+            platform.abandon_pending_connect();
             return; // cancelled while the transport was connecting
         }
         let api = self;

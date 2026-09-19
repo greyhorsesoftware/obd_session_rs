@@ -14,6 +14,11 @@ use std::time::{Duration, Instant};
 pub(super) struct DiscoveryCfg {
     /// A new round STARTS this long after the previous one started.
     pub interval: Duration,
+    /// …but never sooner than this after it ENDED. A round can outlast the
+    /// interval (a BLE scan window, a classic inquiry); without a floor the
+    /// rounds run back to back and the radio is scanning 100% of the time —
+    /// including the moment the user picks an adapter and we must connect.
+    pub min_gap: Duration,
     /// A host round that hasn't answered by now is "no data" for this
     /// round — keep the previous list, never fabricate an empty snapshot.
     pub watchdog: Duration,
@@ -26,6 +31,7 @@ impl Default for DiscoveryCfg {
     fn default() -> Self {
         DiscoveryCfg {
             interval: Duration::from_secs(3),
+            min_gap: Duration::from_secs(1),
             watchdog: Duration::from_secs(10),
             probe: Arc::new(crate::transport::router::discover_rust_connectors),
         }
@@ -49,6 +55,12 @@ fn integrate_host_round(entries: &mut Vec<ConnectorInfo>, snapshot: Vec<Connecto
             entries.push(c);
         }
     }
+}
+
+/// How long to idle after a round that took `elapsed`: out to the interval,
+/// and at least `min_gap` when the round overran it.
+fn round_pause(elapsed: Duration, cfg: &DiscoveryCfg) -> Duration {
+    cfg.interval.saturating_sub(elapsed).max(cfg.min_gap)
 }
 
 /// Host entries ∪ rust entries, host order first, deduped by id.
@@ -152,10 +164,7 @@ impl SessionAPIHandle {
                 last_emitted = merged;
             }
 
-            let elapsed = started.elapsed();
-            if elapsed < cfg.interval {
-                std::thread::sleep(cfg.interval - elapsed);
-            }
+            std::thread::sleep(round_pause(started.elapsed(), &cfg));
         }
     }
 }
@@ -175,6 +184,24 @@ mod tests {
             name: id.to_uppercase(),
             connector_type: kind.into(),
         }
+    }
+
+    // ── cadence (pure) ──
+
+    #[test]
+    fn round_pause_fills_the_interval_and_floors_an_overrun() {
+        let cfg = DiscoveryCfg {
+            interval: Duration::from_secs(3),
+            min_gap: Duration::from_secs(1),
+            ..DiscoveryCfg::default()
+        };
+        // Quick round: idle out to the interval.
+        assert_eq!(round_pause(Duration::from_millis(500), &cfg), Duration::from_millis(2500));
+        // Round nearly filled the interval: the floor wins.
+        assert_eq!(round_pause(Duration::from_millis(2600), &cfg), Duration::from_secs(1));
+        // Round overran (BLE window + classic inquiry): still a real gap,
+        // never back-to-back scanning.
+        assert_eq!(round_pause(Duration::from_secs(11), &cfg), Duration::from_secs(1));
     }
 
     // ── prune policy (pure) ──
@@ -276,6 +303,7 @@ mod tests {
     fn cfg(probe: Vec<ConnectorInfo>) -> DiscoveryCfg {
         DiscoveryCfg {
             interval: Duration::from_millis(60),
+            min_gap: Duration::from_millis(10),
             watchdog: Duration::from_millis(150),
             probe: Arc::new(move || probe.clone()),
         }

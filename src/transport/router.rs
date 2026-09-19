@@ -43,7 +43,7 @@ pub fn discover_rust_connectors() -> Vec<ConnectorInfo> {
         800,
     )));
     #[cfg(feature = "ble")]
-    out.extend(super::ble::discover(Duration::from_secs(5)));
+    out.extend(super::ble::discover(Duration::from_secs(3)));
     #[cfg(all(feature = "bluetooth-classic", target_os = "linux"))]
     out.extend(super::classic_linux::discover(Duration::from_secs(10)));
     #[cfg(all(feature = "bluetooth-classic", target_os = "windows"))]

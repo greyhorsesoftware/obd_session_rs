@@ -12,6 +12,8 @@ pub mod tcp;
 
 #[cfg(feature = "ble")]
 pub mod ble;
+#[cfg(all(feature = "ble", target_os = "linux"))]
+pub mod ble_agent;
 #[cfg(all(feature = "bluetooth-classic", target_os = "linux"))]
 pub mod classic_linux;
 #[cfg(all(feature = "bluetooth-classic", target_os = "windows"))]

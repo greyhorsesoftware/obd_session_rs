@@ -146,6 +146,11 @@ pub struct ExternalPlatform {
     /// LH5: `Arc<Self>` handle for the Rust transports' sinks (set once by
     /// the session creator via `attach_self`; the mock factory does too).
     self_weak: Mutex<Option<std::sync::Weak<ExternalPlatform>>>,
+    /// Fence for Rust-route connects, which open on their own thread: bumped
+    /// by `disconnect_from` / `abandon_pending_connect`. A connect (or a link
+    /// drop) that finds the epoch moved on belongs to an abandoned attempt —
+    /// its transport is closed instead of installed, its drop stays silent.
+    connect_epoch: std::sync::atomic::AtomicU64,
     /// Internal state protected by mutex (Arc: the delivery worker shares it)
     state: Arc<Mutex<ExternalPlatformState>>,
     /// LH0: bytes → responses/lines. Its OWN lock, never held while any
@@ -421,6 +426,7 @@ impl ExternalPlatform {
         ExternalPlatform {
             writer: Mutex::new(Writer::Host),
             self_weak: Mutex::new(None),
+            connect_epoch: std::sync::atomic::AtomicU64::new(0),
             state,
             acc,
             worker_tx: Mutex::new(Some(tx)),
@@ -458,8 +464,11 @@ impl ExternalPlatform {
     }
 
     /// LH5: open the Rust transport a prefixed connector names and make it
-    /// the writer. Reader → `receive_bytes`; a drop → Disconnected.
-    fn connect_rust(&self, connector_id: &str) -> Result<(), String> {
+    /// the writer. Reader → `receive_bytes`; a drop → Disconnected. `epoch`
+    /// is the connect epoch the attempt started under: if it has moved on by
+    /// the time the link is up, the attempt was abandoned — close, don't install.
+    fn connect_rust(&self, connector_id: &str, epoch: u64) -> Result<(), String> {
+        use std::sync::atomic::Ordering;
         let weak =
             self.self_weak.lock().unwrap().clone().ok_or_else(|| {
                 "platform has no self handle (attach_self not called)".to_string()
@@ -472,14 +481,26 @@ impl ExternalPlatform {
         });
         let on_drop: crate::transport::byte::LinkDropSink = Arc::new(move |reason: String| {
             if let Some(p) = weak.upgrade() {
+                // A link we closed ourselves (disconnect / abandoned attempt)
+                // already had its say — its echo must not touch the writer
+                // or the status of whatever attempt owns the platform now.
+                if p.connect_epoch.load(Ordering::SeqCst) != epoch {
+                    return;
+                }
                 *p.writer.lock().unwrap() = Writer::Host;
                 p.update_connection_status(ConnectionStatus::Disconnected, Some(reason));
             }
         });
         let transport =
             crate::transport::router::open_rust_transport(connector_id, on_bytes, on_drop)?;
+        let mut writer = self.writer.lock().unwrap();
+        if self.connect_epoch.load(Ordering::SeqCst) != epoch {
+            drop(writer);
+            transport.close();
+            return Err("connect abandoned".to_string());
+        }
         self.acc.lock().unwrap().reset();
-        *self.writer.lock().unwrap() = Writer::Rust(transport);
+        *writer = Writer::Rust(transport);
         Ok(())
     }
 
@@ -792,12 +813,40 @@ impl OBDPlatformInterface for ExternalPlatform {
     fn connect_to(&self, connector_id: &str, callback: Box<dyn FnOnce(ConnectResult) + Send>) {
         // LH5: Rust-owned connectors never involve the host.
         if crate::transport::router::route(connector_id) == crate::transport::router::Route::Rust {
-            match self.connect_rust(connector_id) {
-                Ok(()) => {
-                    self.update_connection_status(ConnectionStatus::Connected, None);
-                    callback(ConnectResult::Connected);
+            // Open on a thread of our own and answer through the callback,
+            // like the host route does: a transport open can block for tens
+            // of seconds (BLE connect + pairing), and the caller's bounded
+            // wait and cancel checks only work once this has returned.
+            let Some(me) = self.self_weak.lock().unwrap().as_ref().and_then(|w| w.upgrade()) else {
+                callback(ConnectResult::Failed {
+                    reason: "platform has no self handle (attach_self not called)".to_string(),
+                });
+                return;
+            };
+            let epoch = self.connect_epoch.load(std::sync::atomic::Ordering::SeqCst);
+            let id = connector_id.to_string();
+            // The callback rides in a shared slot so a failed spawn can still answer.
+            let slot = Arc::new(Mutex::new(Some(callback)));
+            let slot_t = Arc::clone(&slot);
+            let spawned = std::thread::Builder::new()
+                .name("obd-rust-connect".into())
+                .spawn(move || {
+                    let result = me.connect_rust(&id, epoch);
+                    let Some(callback) = slot_t.lock().unwrap().take() else {
+                        return;
+                    };
+                    match result {
+                        Ok(()) => {
+                            me.update_connection_status(ConnectionStatus::Connected, None);
+                            callback(ConnectResult::Connected);
+                        }
+                        Err(reason) => callback(ConnectResult::Failed { reason }),
+                    }
+                });
+            if let Err(e) = spawned {
+                if let Some(callback) = slot.lock().unwrap().take() {
+                    callback(ConnectResult::Failed { reason: format!("connect thread: {e}") });
                 }
-                Err(reason) => callback(ConnectResult::Failed { reason }),
             }
             return;
         }
@@ -820,9 +869,28 @@ impl OBDPlatformInterface for ExternalPlatform {
         }
     }
 
+    fn abandon_pending_connect(&self) {
+        // Fence first, so neither a late open nor the closed link's drop
+        // echo can reach the attempt that comes next.
+        let rust = {
+            let mut writer = self.writer.lock().unwrap();
+            self.connect_epoch.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            std::mem::replace(&mut *writer, Writer::Host)
+        };
+        if let Writer::Rust(t) = rust {
+            t.close();
+            // Keep connection_status() truthful, but tell no one.
+            self.state.lock().unwrap().connection_status = ConnectionStatus::Disconnected;
+        }
+    }
+
     fn disconnect_from(&self) {
         // LH5: a Rust transport closes here; the host path asks Swift.
-        let rust = std::mem::replace(&mut *self.writer.lock().unwrap(), Writer::Host);
+        let rust = {
+            let mut writer = self.writer.lock().unwrap();
+            self.connect_epoch.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            std::mem::replace(&mut *writer, Writer::Host)
+        };
         if let Writer::Rust(t) = rust {
             t.close();
             self.update_connection_status(
@@ -1210,6 +1278,97 @@ mod tests {
         // Response should contain mode 41 0C (PID response format)
         let response = result.unwrap().raw;
         assert!(response.contains("41") && response.contains("0C"));
+    }
+
+    /// Loopback listener that reports (over the channel) when its one client hangs up.
+    #[cfg(test)]
+    fn hangup_probe() -> (u16, std::sync::mpsc::Receiver<()>) {
+        use std::io::Read;
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (tx, rx) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 64];
+            while !matches!(s.read(&mut buf), Ok(0) | Err(_)) {}
+            let _ = tx.send(());
+        });
+        (port, rx)
+    }
+
+    /// A Rust-route connect opens on its own thread: `connect_to` returns at
+    /// once and the result arrives through the callback, so the session's
+    /// bounded wait and cancel checks cover BLE / USB / WiFi too.
+    #[test]
+    fn rust_connect_answers_off_the_calling_thread() {
+        let (port, _hangup) = hangup_probe();
+        let (platform, _ctx) = create_mock_external_platform();
+        let (tx, rx) = std::sync::mpsc::channel();
+        platform.connect_to(
+            &format!("wifi:127.0.0.1:{port}"),
+            Box::new(move |r| {
+                let _ = tx.send((r, std::thread::current().id()));
+            }),
+        );
+        let (result, thread) = rx.recv_timeout(Duration::from_secs(5)).unwrap();
+        assert!(matches!(result, ConnectResult::Connected));
+        assert_ne!(thread, std::thread::current().id());
+        platform.disconnect_from();
+    }
+
+    /// Cancel lands right after the link came up: the link is closed, and
+    /// its drop echo publishes NOTHING (a newer attempt may own the platform).
+    #[test]
+    fn abandoned_connect_closes_the_link_silently() {
+        let (port, hangup) = hangup_probe();
+        let (platform, _ctx) = create_mock_external_platform();
+        let statuses: Arc<Mutex<Vec<ConnectionStatus>>> = Arc::new(Mutex::new(Vec::new()));
+        {
+            let st = Arc::clone(&statuses);
+            platform
+                .set_connection_callback(Some(Box::new(move |s, _| st.lock().unwrap().push(s))));
+        }
+        let (tx, rx) = std::sync::mpsc::channel();
+        platform.connect_to(
+            &format!("wifi:127.0.0.1:{port}"),
+            Box::new(move |r| {
+                let _ = tx.send(r);
+            }),
+        );
+        assert!(matches!(
+            rx.recv_timeout(Duration::from_secs(5)).unwrap(),
+            ConnectResult::Connected
+        ));
+
+        platform.abandon_pending_connect();
+        hangup
+            .recv_timeout(Duration::from_secs(5))
+            .expect("abandoned link is closed");
+        std::thread::sleep(Duration::from_millis(150)); // let the drop echo run
+        assert!(!platform.is_connected());
+        assert!(
+            !statuses.lock().unwrap().contains(&ConnectionStatus::Disconnected),
+            "abandon is silent: {:?}",
+            statuses.lock().unwrap()
+        );
+    }
+
+    /// The open finishes AFTER the attempt was abandoned (epoch moved on):
+    /// the late transport is closed, never installed as the writer.
+    #[test]
+    fn late_connect_under_a_stale_epoch_is_dropped() {
+        let (port, hangup) = hangup_probe();
+        let (platform, _ctx) = create_mock_external_platform();
+        let stale = platform.connect_epoch.load(std::sync::atomic::Ordering::SeqCst);
+        platform.abandon_pending_connect();
+        let err = platform
+            .connect_rust(&format!("wifi:127.0.0.1:{port}"), stale)
+            .unwrap_err();
+        assert_eq!(err, "connect abandoned");
+        hangup
+            .recv_timeout(Duration::from_secs(5))
+            .expect("late link is closed");
+        assert!(platform.rust_writer().is_none());
     }
 
     /// The session drives transport teardown: disconnect_from must invoke the

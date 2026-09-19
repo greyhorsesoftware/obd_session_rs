@@ -131,6 +131,14 @@ pub trait OBDPlatformInterface: Send + Sync {
         // Default: not supported
     }
 
+    /// The session gave up on a `connect_to` it had asked for (user cancel
+    /// while the transport was still opening). A platform that opens links
+    /// asynchronously must drop the late result — and close a link that had
+    /// just come up — WITHOUT publishing a status change: the cancel already
+    /// told the UI, and a newer attempt may own the platform by then.
+    /// Default: no-op (a host-owned transport runs its own connect deadline).
+    fn abandon_pending_connect(&self) {}
+
     /// Ask platform to disconnect from the current device.
     /// Default: no-op.
     fn disconnect_from(&self) {
